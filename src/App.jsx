@@ -82,6 +82,39 @@ export default function App() {
   const intervalRef = useRef(null)
   const audioCtxRef = useRef(null)
 
+  const groupedSessions = useMemo(() => {
+    const result = { today: [], yesterday: [], past: [] }
+    if (!Array.isArray(sessions) || sessions.length === 0) return result
+
+    const now = new Date()
+    const startOfToday = new Date(now)
+    startOfToday.setHours(0, 0, 0, 0)
+
+    const startOfYesterday = new Date(startOfToday)
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+
+    for (const s of sessions) {
+      const endedAtMs = Number(s.endedAt)
+      if (!Number.isFinite(endedAtMs)) { result.past.push(s); continue }
+      const endedAt = new Date(endedAtMs)
+      if (endedAt >= startOfToday) {
+        result.today.push(s)
+      } else if (endedAt >= startOfYesterday) {
+        result.yesterday.push(s)
+      } else {
+        result.past.push(s)
+      }
+    }
+
+    // Optional: newest first within each group
+    const sortDesc = (a, b) => Number(b.endedAt) - Number(a.endedAt)
+    result.today.sort(sortDesc)
+    result.yesterday.sort(sortDesc)
+    result.past.sort(sortDesc)
+
+    return result
+  }, [sessions])
+
   // Helper to persist both state and sessions immediately
   const persistAll = (override = {}) => {
     try {
@@ -621,33 +654,106 @@ export default function App() {
           {sessions.length === 0 ? (
             <p className="muted">No sessions yet. Finish a timer to log one.</p>
           ) : (
-            <ul className="session-list">
-              {sessions.map((s) => (
-                <li key={s.id} className="session-item">
+            <div>
+              {groupedSessions.today.length > 0 && (
+                <div className="session-group">
+                  <h4>Today</h4>
+                  <ul className="session-list">
+                    {groupedSessions.today.map((s) => (
+                      <li key={s.id} className="session-item">
 
-                  <div className="session-row">
-                    <div className="session-main">
-                      <div className="session-meta">
-                        <span className="when">{new Date(s.endedAt).toLocaleString()}</span>
-                        <span className="duration">{formatTime(s.durationSeconds)}</span>
-                      </div>
-                      {Array.isArray(s.tags) && s.tags.length > 0 && (
-                        <div className="tags">
-                          {s.tags.map((t, i) => (
-                            <span key={i} className="tag">{t}</span>
-                          ))}
+                        <div className="session-row">
+                          <div className="session-main">
+                            <div className="session-meta">
+                              <span className="when">{new Date(s.endedAt).toLocaleString()}</span>
+                              <span className="duration">{formatTime(s.durationSeconds)}</span>
+                            </div>
+                            {Array.isArray(s.tags) && s.tags.length > 0 && (
+                              <div className="tags">
+                                {s.tags.map((t, i) => (
+                                  <span key={i} className="tag">{t}</span>
+                                ))}
+                              </div>
+                            )}
+                            {s.note ? <div className="note">{s.note}</div> : <div className="note muted">(no note)</div>}
+                          </div>
+                          <div className="session-actions">
+                            <button onClick={() => startEditSession(s)}>Edit</button>
+                            <button className="danger" onClick={() => deleteSession(s.id)}>Delete</button>
+                          </div>
                         </div>
-                      )}
-                      {s.note ? <div className="note">{s.note}</div> : <div className="note muted">(no note)</div>}
-                    </div>
-                    <div className="session-actions">
-                      <button onClick={() => startEditSession(s)}>Edit</button>
-                      <button className="danger" onClick={() => deleteSession(s.id)}>Delete</button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {groupedSessions.yesterday.length > 0 && (
+                <div className="session-group">
+                  <h4>Yesterday</h4>
+                  <ul className="session-list">
+                    {groupedSessions.yesterday.map((s) => (
+                      <li key={s.id} className="session-item">
+
+                        <div className="session-row">
+                          <div className="session-main">
+                            <div className="session-meta">
+                              <span className="when">{new Date(s.endedAt).toLocaleString()}</span>
+                              <span className="duration">{formatTime(s.durationSeconds)}</span>
+                            </div>
+                            {Array.isArray(s.tags) && s.tags.length > 0 && (
+                              <div className="tags">
+                                {s.tags.map((t, i) => (
+                                  <span key={i} className="tag">{t}</span>
+                                ))}
+                              </div>
+                            )}
+                            {s.note ? <div className="note">{s.note}</div> : <div className="note muted">(no note)</div>}
+                          </div>
+                          <div className="session-actions">
+                            <button onClick={() => startEditSession(s)}>Edit</button>
+                            <button className="danger" onClick={() => deleteSession(s.id)}>Delete</button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {groupedSessions.past.length > 0 && (
+                <div className="session-group">
+                  <h4>Past</h4>
+                  <ul className="session-list">
+                    {groupedSessions.past.map((s) => (
+                      <li key={s.id} className="session-item">
+
+                        <div className="session-row">
+                          <div className="session-main">
+                            <div className="session-meta">
+                              <span className="when">{new Date(s.endedAt).toLocaleString()}</span>
+                              <span className="duration">{formatTime(s.durationSeconds)}</span>
+                            </div>
+                            {Array.isArray(s.tags) && s.tags.length > 0 && (
+                              <div className="tags">
+                                {s.tags.map((t, i) => (
+                                  <span key={i} className="tag">{t}</span>
+                                ))}
+                              </div>
+                            )}
+                            {s.note ? <div className="note">{s.note}</div> : <div className="note muted">(no note)</div>}
+                          </div>
+                          <div className="session-actions">
+                            <button onClick={() => startEditSession(s)}>Edit</button>
+                            <button className="danger" onClick={() => deleteSession(s.id)}>Delete</button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </section>
       ) : null}
